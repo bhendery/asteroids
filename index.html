@@ -139,6 +139,7 @@
     let particles = [];
     let stars = [];
     let firstSaucerSpawned = false;
+    let doubleShotPending = 0;
 
     const ASTEROID_SIZES = { large: 3, medium: 2, small: 1 };
     const ASTEROID_POINTS = { large: 20, medium: 50, small: 100 };
@@ -427,7 +428,19 @@
       player.x = (player.x + canvas.width) % canvas.width;
       player.y = (player.y + canvas.height) % canvas.height;
 
-      // Shooting is handled on keydown (one bullet per key press)
+      // Shooting is handled on keydown; double-burst fires a second bullet after a short delay
+      if (doubleShotPending > 0) {
+        doubleShotPending--;
+        if (doubleShotPending === 0) {
+          bullets.push({
+            x: player.x + Math.cos(player.angle) * player.radius,
+            y: player.y + Math.sin(player.angle) * player.radius,
+            vx: Math.cos(player.angle) * 12,
+            vy: Math.sin(player.angle) * 12,
+            life: 90,
+          });
+        }
+      }
 
       // Bullets
       for (let i = bullets.length - 1; i >= 0; i--) {
@@ -577,6 +590,7 @@
       saucers = [];
       particles = [];
       firstSaucerSpawned = false;
+      doubleShotPending = 0;
       document.getElementById('score').textContent = '0';
       document.getElementById('lives').textContent = '3';
       generateStars();
@@ -603,6 +617,7 @@
             vy: Math.sin(player.angle) * 12,
             life: 90,
           });
+          if (Math.random() < 0.15) doubleShotPending = 8;
         }
       }
     });
