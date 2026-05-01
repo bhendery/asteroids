@@ -147,6 +147,11 @@
     const SAUCER_POINTS = 150;
     const SAUCER_FIRE_INTERVAL = 150;
     const SAUCER_SPEED = 1.2;
+    const ELITE_SAUCER_RADIUS = 24;
+    const ELITE_SAUCER_POINTS = 500;
+    const ELITE_SAUCER_FIRE_INTERVAL = 110;
+    const ELITE_SAUCER_SPEED = 0.9;
+    const ELITE_SAUCER_HP = 3;
 
     function rand(min, max) {
       return min + Math.random() * (max - min);
@@ -227,15 +232,19 @@
       }
     }
 
-    function spawnSaucer() {
+    function spawnSaucer(elite = false) {
       const fromLeft = Math.random() < 0.5;
-      const x = fromLeft ? -SAUCER_RADIUS - 10 : canvas.width + SAUCER_RADIUS + 10;
+      const radius = elite ? ELITE_SAUCER_RADIUS : SAUCER_RADIUS;
+      const speed = elite ? ELITE_SAUCER_SPEED : SAUCER_SPEED;
+      const x = fromLeft ? -radius - 10 : canvas.width + radius + 10;
       const y = rand(80, canvas.height - 80);
-      const vx = fromLeft ? SAUCER_SPEED : -SAUCER_SPEED;
+      const vx = fromLeft ? speed : -speed;
       const vy = rand(-0.2, 0.2);
       saucers.push({
         x, y, vx, vy,
-        radius: SAUCER_RADIUS,
+        radius,
+        elite,
+        hp: elite ? ELITE_SAUCER_HP : 1,
         lastShot: 0,
         doubleShotPending: 0,
       });
@@ -245,21 +254,28 @@
       if (!gameRunning) return;
       if (!firstSaucerSpawned && gameTime >= 180 && gameTime <= 600) {
         if (Math.random() < 1 / 80) {
-          spawnSaucer();
+          spawnSaucer(false);
           firstSaucerSpawned = true;
         }
       }
       if (firstSaucerSpawned && saucers.length < 2 && gameTime > 0 && Math.random() < 1 / 450) {
-        spawnSaucer();
+        const elite = gameTime >= 600 && Math.random() < 0.35;
+        spawnSaucer(elite);
       }
     }
 
     function drawSaucer(s) {
       ctx.save();
       ctx.translate(s.x, s.y);
-      ctx.strokeStyle = '#a0c0e0';
-      ctx.fillStyle = 'rgba(160, 192, 224, 0.35)';
-      ctx.lineWidth = 2;
+      if (s.elite) {
+        ctx.strokeStyle = '#ff4d6d';
+        ctx.fillStyle = 'rgba(255, 77, 109, 0.35)';
+        ctx.lineWidth = 2.5;
+      } else {
+        ctx.strokeStyle = '#a0c0e0';
+        ctx.fillStyle = 'rgba(160, 192, 224, 0.35)';
+        ctx.lineWidth = 2;
+      }
       ctx.beginPath();
       ctx.ellipse(0, 0, s.radius * 1.4, s.radius * 0.6, 0, 0, Math.PI * 2);
       ctx.fill();
@@ -267,6 +283,11 @@
       ctx.beginPath();
       ctx.ellipse(0, 0, s.radius * 0.9, s.radius * 0.35, 0, 0, Math.PI * 2);
       ctx.stroke();
+      if (s.elite) {
+        ctx.beginPath();
+        ctx.arc(0, -s.radius * 0.1, s.radius * 0.25, 0, Math.PI * 2);
+        ctx.stroke();
+      }
       ctx.restore();
     }
 
@@ -278,9 +299,9 @@
     }
 
     function drawEnemyBullet(b) {
-      ctx.fillStyle = '#ff3333';
+      ctx.fillStyle = b.elite ? '#ff4d6d' : '#ff3333';
       ctx.beginPath();
-      ctx.arc(b.x, b.y, 3, 0, Math.PI * 2);
+      ctx.arc(b.x, b.y, b.elite ? 4 : 3, 0, Math.PI * 2);
       ctx.fill();
     }
 
@@ -374,11 +395,16 @@
     }
 
     function breakSaucer(saucer, bulletIndex) {
-      score += SAUCER_POINTS;
-      document.getElementById('score').textContent = score;
-      addParticles(saucer.x, saucer.y, '#a0c0e0', 10);
-      saucers.splice(saucers.indexOf(saucer), 1);
+      saucer.hp--;
       if (bulletIndex >= 0) bullets.splice(bulletIndex, 1);
+      if (saucer.hp > 0) {
+        addParticles(saucer.x, saucer.y, saucer.elite ? '#ff4d6d' : '#a0c0e0', 4);
+        return;
+      }
+      score += saucer.elite ? ELITE_SAUCER_POINTS : SAUCER_POINTS;
+      document.getElementById('score').textContent = score;
+      addParticles(saucer.x, saucer.y, saucer.elite ? '#ff4d6d' : '#a0c0e0', saucer.elite ? 18 : 10);
+      saucers.splice(saucers.indexOf(saucer), 1);
     }
 
     function breakAsteroid(asteroid, bulletIndex) {
@@ -457,16 +483,18 @@
       for (const s of saucers) {
         s.x += s.vx;
         s.y += s.vy;
-        if (gameTime - s.lastShot >= SAUCER_FIRE_INTERVAL) {
+        const fireInterval = s.elite ? ELITE_SAUCER_FIRE_INTERVAL : SAUCER_FIRE_INTERVAL;
+        const spread = s.elite ? 0.25 : 0.55;
+        if (gameTime - s.lastShot >= fireInterval) {
           const angleToPlayer = Math.atan2(player.y - s.y, player.x - s.x);
-          const inaccuracy = rand(-0.55, 0.55);
-          const angle = angleToPlayer + inaccuracy;
-          const speed = 5;
+          const angle = angleToPlayer + rand(-spread, spread);
+          const speed = s.elite ? 6 : 5;
           enemyBullets.push({
             x: s.x, y: s.y,
             vx: Math.cos(angle) * speed,
             vy: Math.sin(angle) * speed,
             life: 120,
+            elite: s.elite,
           });
           s.lastShot = gameTime;
           if (Math.random() < 0.15) s.doubleShotPending = 8;
@@ -475,13 +503,14 @@
           s.doubleShotPending--;
           if (s.doubleShotPending === 0) {
             const angleToPlayer = Math.atan2(player.y - s.y, player.x - s.x);
-            const angle = angleToPlayer + rand(-0.55, 0.55);
-            const speed = 5;
+            const angle = angleToPlayer + rand(-spread, spread);
+            const speed = s.elite ? 6 : 5;
             enemyBullets.push({
               x: s.x, y: s.y,
               vx: Math.cos(angle) * speed,
               vy: Math.sin(angle) * speed,
               life: 120,
+              elite: s.elite,
             });
           }
         }
