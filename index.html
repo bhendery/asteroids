@@ -139,7 +139,6 @@
     let particles = [];
     let stars = [];
     let firstSaucerSpawned = false;
-    let doubleShotPending = 0;
 
     const ASTEROID_SIZES = { large: 3, medium: 2, small: 1 };
     const ASTEROID_POINTS = { large: 20, medium: 50, small: 100 };
@@ -238,6 +237,7 @@
         x, y, vx, vy,
         radius: SAUCER_RADIUS,
         lastShot: 0,
+        doubleShotPending: 0,
       });
     }
 
@@ -428,20 +428,6 @@
       player.x = (player.x + canvas.width) % canvas.width;
       player.y = (player.y + canvas.height) % canvas.height;
 
-      // Shooting is handled on keydown; double-burst fires a second bullet after a short delay
-      if (doubleShotPending > 0) {
-        doubleShotPending--;
-        if (doubleShotPending === 0) {
-          bullets.push({
-            x: player.x + Math.cos(player.angle) * player.radius,
-            y: player.y + Math.sin(player.angle) * player.radius,
-            vx: Math.cos(player.angle) * 12,
-            vy: Math.sin(player.angle) * 12,
-            life: 90,
-          });
-        }
-      }
-
       // Bullets
       for (let i = bullets.length - 1; i >= 0; i--) {
         const b = bullets[i];
@@ -483,6 +469,21 @@
             life: 120,
           });
           s.lastShot = gameTime;
+          if (Math.random() < 0.15) s.doubleShotPending = 8;
+        }
+        if (s.doubleShotPending > 0) {
+          s.doubleShotPending--;
+          if (s.doubleShotPending === 0) {
+            const angleToPlayer = Math.atan2(player.y - s.y, player.x - s.x);
+            const angle = angleToPlayer + rand(-0.55, 0.55);
+            const speed = 5;
+            enemyBullets.push({
+              x: s.x, y: s.y,
+              vx: Math.cos(angle) * speed,
+              vy: Math.sin(angle) * speed,
+              life: 120,
+            });
+          }
         }
       }
       for (let i = saucers.length - 1; i >= 0; i--) {
@@ -590,7 +591,6 @@
       saucers = [];
       particles = [];
       firstSaucerSpawned = false;
-      doubleShotPending = 0;
       document.getElementById('score').textContent = '0';
       document.getElementById('lives').textContent = '3';
       generateStars();
@@ -617,7 +617,6 @@
             vy: Math.sin(player.angle) * 12,
             life: 90,
           });
-          if (Math.random() < 0.15) doubleShotPending = 8;
         }
       }
     });
