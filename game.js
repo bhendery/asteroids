@@ -456,9 +456,35 @@ function breakAsteroid(asteroid, bulletIndex) {
   if (bulletIndex >= 0) bullets.splice(bulletIndex, 1);
 }
 
+const SHIP_ICON_POINTS = '0,-16 8,-4 8.4,8.8 6.7,14.7 0,8 -6.7,14.7 -8.4,8.8 -8,-4';
+
+function renderLives() {
+  const container = document.getElementById('lives');
+  container.innerHTML = '';
+  for (let i = 0; i < lives; i++) {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '-20 -20 40 40');
+    const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    poly.setAttribute('points', SHIP_ICON_POINTS);
+    poly.setAttribute('fill', 'rgba(124, 252, 0, 0.2)');
+    poly.setAttribute('stroke', '#7cfc00');
+    poly.setAttribute('stroke-width', '2');
+    poly.setAttribute('stroke-linejoin', 'round');
+    svg.appendChild(poly);
+    container.appendChild(svg);
+  }
+}
+
 function hurtPlayer() {
   lives--;
-  document.getElementById('lives').textContent = lives;
+  const container = document.getElementById('lives');
+  const last = container.lastElementChild;
+  if (last) {
+    last.classList.add('lost');
+    setTimeout(() => renderLives(), 400);
+  } else {
+    renderLives();
+  }
   player.invincibleUntil = gameTime + 120;
   addParticles(player.x, player.y, '#ff6b6b', 15);
   if (lives <= 0) endGame();
@@ -720,7 +746,7 @@ document.getElementById('startBtn').onclick = () => {
   megashipSpawned = false;
   warning = null;
   document.getElementById('score').textContent = '0';
-  document.getElementById('lives').textContent = '3';
+  renderLives();
   generateStars();
   gameRunning = true;
 };
@@ -757,4 +783,5 @@ window.addEventListener('keyup', (e) => {
 });
 
 generateStars();
+renderLives();
 gameLoop();

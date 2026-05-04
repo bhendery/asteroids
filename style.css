@@ -24,7 +24,32 @@ h1 {
   font-size: 0.9rem;
 }
 .score { color: #7cfc00; }
-.lives { color: #ff6b6b; }
+.canvas-wrap {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+}
+.lives-hud {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  display: flex;
+  gap: 6px;
+  z-index: 5;
+  pointer-events: none;
+}
+.lives-hud svg {
+  width: 22px;
+  height: 22px;
+  filter: drop-shadow(0 0 6px rgba(124, 252, 0, 0.5));
+}
+.lives-hud svg.lost {
+  animation: life-lost 0.4s ease-out forwards;
+}
+@keyframes life-lost {
+  0% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.6); }
+}
 #gameCanvas {
   display: block;
   background: radial-gradient(ellipse at center, #0f1420 0%, #050508 100%);
