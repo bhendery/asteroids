@@ -685,7 +685,7 @@ function draw() {
     const pulse = 0.5 + 0.5 * Math.sin(gameTime * 0.2);
     ctx.save();
     ctx.globalAlpha = (warning.timer / 180) * pulse;
-    ctx.fillStyle = '#ff6600';
+    ctx.fillStyle = '#ff69b4';
     ctx.font = 'bold 22px Orbitron, monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
