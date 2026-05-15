@@ -533,7 +533,7 @@ function update(dt) {
     s.x += s.vx;
     s.y += s.vy;
     const fireInterval = s.elite ? ELITE_SAUCER_FIRE_INTERVAL : SAUCER_FIRE_INTERVAL;
-    const spread = s.elite ? 0.25 : 0.55;
+    const spread = s.elite ? 0.25 : 0.7;
     if (gameTime - s.lastShot >= fireInterval) {
       const angleToPlayer = Math.atan2(player.y - s.y, player.x - s.x);
       const angle = angleToPlayer + rand(-spread, spread);
