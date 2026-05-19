@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Asteroid Shooter</title>
+  <title>Arcade</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>ASTEROID SHOOTER</h1>
+  <h1 id="gameTitle">ARCADE</h1>
   <div class="ui">
     <span class="score">SCORE: <span id="score">0</span></span>
   </div>
@@ -15,22 +15,25 @@
     <div id="lives" class="lives-hud" aria-label="Lives remaining"></div>
     <canvas id="gameCanvas" width="800" height="600"></canvas>
   </div>
-  <p class="instructions">ARROWS / WASD — MOVE &nbsp;|&nbsp; SPACE — FIRE &nbsp;|&nbsp; Don't let asteroids hit you!</p>
+  <p class="instructions" id="instructions">CHOOSE A GAME TO BEGIN</p>
 
   <div id="startScreen" class="start-screen">
-    <h2>READY TO LAUNCH</h2>
-    <p>Destroy asteroids before they hit you.</p>
-    <p>Large asteroids split into smaller ones.</p>
-    <p>Difficulty increases over time. Good luck!</p>
-    <button id="startBtn">START GAME</button>
+    <h2>SELECT GAME</h2>
+    <p>Pick your adventure.</p>
+    <div class="game-choice">
+      <button id="startAsteroids">ASTEROID SHOOTER</button>
+      <button id="startFrogger">SPACE FROGGER</button>
+    </div>
   </div>
 
   <div id="gameOverScreen" class="game-over hidden">
     <h2>GAME OVER</h2>
     <p>Final Score: <span id="finalScore">0</span></p>
     <button id="restartBtn">PLAY AGAIN</button>
+    <button id="menuBtn">MAIN MENU</button>
   </div>
 
   <script src="game.js"></script>
+  <script src="frogger.js"></script>
 </body>
 </html>
