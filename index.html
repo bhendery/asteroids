@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Asteroid Shooter</title>
+  <title>Asteroids Arcade</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>ASTEROID SHOOTER</h1>
+  <h1 id="gameTitle">ASTEROIDS ARCADE</h1>
   <div class="ui">
     <span class="score">SCORE: <span id="score">0</span></span>
   </div>
@@ -15,22 +15,43 @@
     <div id="lives" class="lives-hud" aria-label="Lives remaining"></div>
     <canvas id="gameCanvas" width="800" height="600"></canvas>
   </div>
-  <p class="instructions">ARROWS / WASD — MOVE &nbsp;|&nbsp; SPACE — FIRE &nbsp;|&nbsp; Don't let asteroids hit you!</p>
+  <p class="instructions" id="instructions">ARROWS / WASD — MOVE &nbsp;|&nbsp; SPACE — FIRE &nbsp;|&nbsp; Don't let asteroids hit you!</p>
 
-  <div id="startScreen" class="start-screen">
+  <div id="menuScreen" class="start-screen">
+    <h2>ASTEROIDS ARCADE</h2>
+    <p>Choose your game:</p>
+    <div class="menu-buttons">
+      <button id="playAsteroidsBtn">ASTEROID SHOOTER</button>
+      <button id="playDrivingBtn">SPACE RACER</button>
+    </div>
+  </div>
+
+  <div id="startScreen" class="start-screen hidden">
     <h2>READY TO LAUNCH</h2>
     <p>Destroy asteroids before they hit you.</p>
     <p>Large asteroids split into smaller ones.</p>
     <p>Difficulty increases over time. Good luck!</p>
     <button id="startBtn">START GAME</button>
+    <button class="back-btn" id="backFromAsteroidsBtn">MAIN MENU</button>
+  </div>
+
+  <div id="drivingStartScreen" class="start-screen hidden">
+    <h2>SPACE RACER</h2>
+    <p>Race through asteroid traffic at light speed.</p>
+    <p>Use LEFT and RIGHT to switch lanes.</p>
+    <p>Don't crash — speed climbs as you survive!</p>
+    <button id="drivingStartBtn">START RACE</button>
+    <button class="back-btn" id="backFromDrivingBtn">MAIN MENU</button>
   </div>
 
   <div id="gameOverScreen" class="game-over hidden">
     <h2>GAME OVER</h2>
     <p>Final Score: <span id="finalScore">0</span></p>
     <button id="restartBtn">PLAY AGAIN</button>
+    <button class="back-btn" id="gameOverMenuBtn">MAIN MENU</button>
   </div>
 
+  <script src="driving.js"></script>
   <script src="game.js"></script>
 </body>
 </html>
