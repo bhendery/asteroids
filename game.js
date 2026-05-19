@@ -3,10 +3,16 @@ const ctx = canvas.getContext('2d');
 
 // Game state
 let gameRunning = false;
+let gameMode = null; // 'asteroids' | 'driving' | null
 let score = 0;
 let lives = 3;
 let gameTime = 0;
 let keys = { up: false, down: false, left: false, right: false, fire: false };
+
+const ASTEROIDS_INSTRUCTIONS = "ARROWS / WASD — MOVE \u00a0|\u00a0 SPACE — FIRE \u00a0|\u00a0 Don't let asteroids hit you!";
+const DRIVING_INSTRUCTIONS = "LEFT / RIGHT — SWITCH LANES \u00a0|\u00a0 Dodge traffic, don't crash!";
+const ASTEROIDS_TITLE = 'ASTEROID SHOOTER';
+const DRIVING_TITLE = 'SPACE RACER';
 
 // Player
 const player = {
@@ -720,14 +726,51 @@ function draw() {
   }
 }
 
+function drawIdleBackground() {
+  ctx.fillStyle = '#050508';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  for (const s of stars) {
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.fillRect(s.x, s.y, 1, 1);
+  }
+}
+
 function gameLoop() {
-  update(1);
-  draw();
+  if (gameMode === 'asteroids') {
+    update(1);
+    draw();
+  } else if (gameMode === 'driving') {
+    DrivingGame.update();
+    DrivingGame.draw();
+    document.getElementById('score').textContent = DrivingGame.getScore();
+  } else {
+    drawIdleBackground();
+  }
   requestAnimationFrame(gameLoop);
 }
 
-document.getElementById('startBtn').onclick = () => {
-  document.getElementById('startScreen').classList.add('hidden');
+function hideAllScreens() {
+  for (const id of ['menuScreen', 'startScreen', 'drivingStartScreen', 'gameOverScreen']) {
+    document.getElementById(id).classList.add('hidden');
+  }
+}
+
+function showMenu() {
+  hideAllScreens();
+  document.getElementById('menuScreen').classList.remove('hidden');
+  gameMode = null;
+  gameRunning = false;
+  document.getElementById('score').textContent = '0';
+  document.getElementById('lives').innerHTML = '';
+  document.getElementById('gameTitle').textContent = 'ASTEROIDS ARCADE';
+  document.getElementById('instructions').textContent = 'Pick a game from the menu to start.';
+}
+
+function startAsteroids() {
+  hideAllScreens();
+  gameMode = 'asteroids';
+  document.getElementById('gameTitle').textContent = ASTEROIDS_TITLE;
+  document.getElementById('instructions').textContent = ASTEROIDS_INSTRUCTIONS;
   score = 0;
   lives = 3;
   gameTime = 0;
@@ -749,11 +792,40 @@ document.getElementById('startBtn').onclick = () => {
   renderLives();
   generateStars();
   gameRunning = true;
+}
+
+function startDriving() {
+  hideAllScreens();
+  gameMode = 'driving';
+  document.getElementById('gameTitle').textContent = DRIVING_TITLE;
+  document.getElementById('instructions').textContent = DRIVING_INSTRUCTIONS;
+  document.getElementById('lives').innerHTML = '';
+  document.getElementById('score').textContent = '0';
+  DrivingGame.init(canvas, ctx);
+  DrivingGame.setGameOverHandler((finalScore) => {
+    document.getElementById('finalScore').textContent = finalScore;
+    document.getElementById('gameOverScreen').classList.remove('hidden');
+  });
+}
+
+document.getElementById('playAsteroidsBtn').onclick = () => {
+  hideAllScreens();
+  document.getElementById('startScreen').classList.remove('hidden');
 };
+document.getElementById('playDrivingBtn').onclick = () => {
+  hideAllScreens();
+  document.getElementById('drivingStartScreen').classList.remove('hidden');
+};
+document.getElementById('startBtn').onclick = startAsteroids;
+document.getElementById('drivingStartBtn').onclick = startDriving;
+document.getElementById('backFromAsteroidsBtn').onclick = showMenu;
+document.getElementById('backFromDrivingBtn').onclick = showMenu;
+document.getElementById('gameOverMenuBtn').onclick = showMenu;
 
 document.getElementById('restartBtn').onclick = () => {
   document.getElementById('gameOverScreen').classList.add('hidden');
-  document.getElementById('startBtn').click();
+  if (gameMode === 'driving') startDriving();
+  else startAsteroids();
 };
 
 window.addEventListener('keydown', (e) => {
@@ -761,9 +833,13 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'ArrowDown' || e.code === 'KeyS') keys.down = true;
   if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = true;
   if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = true;
+  if (gameMode === 'driving' && !e.repeat) {
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA') DrivingGame.onLaneInput(-1);
+    if (e.code === 'ArrowRight' || e.code === 'KeyD') DrivingGame.onLaneInput(1);
+  }
   if (e.code === 'Space') {
     e.preventDefault();
-    if (!e.repeat && gameRunning) {
+    if (!e.repeat && gameRunning && gameMode === 'asteroids') {
       bullets.push({
         x: player.x + Math.cos(player.angle) * player.radius,
         y: player.y + Math.sin(player.angle) * player.radius,
@@ -783,5 +859,4 @@ window.addEventListener('keyup', (e) => {
 });
 
 generateStars();
-renderLives();
 gameLoop();
