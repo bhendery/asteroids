@@ -4,7 +4,7 @@ const ctx = canvas.getContext('2d');
 // Game state
 let gameRunning = false;
 let score = 0;
-let lives = 5;
+let lives = 6;
 let gameTime = 0;
 let keys = { up: false, down: false, left: false, right: false, fire: false };
 
@@ -703,7 +703,7 @@ function gameLoop() {
 document.getElementById('startBtn').onclick = () => {
   document.getElementById('startScreen').classList.add('hidden');
   score = 0;
-  lives = 5;
+  lives = 6;
   gameTime = 0;
   player.x = canvas.width / 2;
   player.y = canvas.height / 2;
@@ -720,7 +720,7 @@ document.getElementById('startBtn').onclick = () => {
   megashipSpawned = false;
   warning = null;
   document.getElementById('score').textContent = '0';
-  document.getElementById('lives').textContent = '5';
+  document.getElementById('lives').textContent = '6';
   generateStars();
   gameRunning = true;
 };
