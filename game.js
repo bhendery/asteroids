@@ -1,6 +1,9 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
+// 'asteroids' | 'frogger' | null
+window.gameMode = null;
+
 // Game state
 let gameRunning = false;
 let score = 0;
@@ -721,13 +724,20 @@ function draw() {
 }
 
 function gameLoop() {
-  update(1);
-  draw();
+  if (window.gameMode === 'asteroids') {
+    update(1);
+    draw();
+  }
   requestAnimationFrame(gameLoop);
 }
 
-document.getElementById('startBtn').onclick = () => {
+function startAsteroids() {
+  window.gameMode = 'asteroids';
+  document.getElementById('gameTitle').textContent = 'ASTEROID SHOOTER';
+  document.getElementById('instructions').textContent = "ARROWS / WASD — MOVE  |  SPACE — FIRE  |  Don't let asteroids hit you!";
+  document.getElementById('lives').style.display = '';
   document.getElementById('startScreen').classList.add('hidden');
+  document.getElementById('gameOverScreen').classList.add('hidden');
   score = 0;
   lives = 3;
   gameTime = 0;
@@ -749,14 +759,30 @@ document.getElementById('startBtn').onclick = () => {
   renderLives();
   generateStars();
   gameRunning = true;
-};
+}
+
+document.getElementById('startAsteroids').onclick = startAsteroids;
+
+function showMenu() {
+  window.gameMode = null;
+  gameRunning = false;
+  document.getElementById('gameTitle').textContent = 'ARCADE';
+  document.getElementById('instructions').textContent = 'CHOOSE A GAME TO BEGIN';
+  document.getElementById('lives').innerHTML = '';
+  document.getElementById('score').textContent = '0';
+  document.getElementById('gameOverScreen').classList.add('hidden');
+  document.getElementById('startScreen').classList.remove('hidden');
+}
 
 document.getElementById('restartBtn').onclick = () => {
   document.getElementById('gameOverScreen').classList.add('hidden');
-  document.getElementById('startBtn').click();
+  if (window.gameMode === 'asteroids') startAsteroids();
+  else if (window.gameMode === 'frogger') window.startFrogger();
 };
+document.getElementById('menuBtn').onclick = showMenu;
 
 window.addEventListener('keydown', (e) => {
+  if (window.gameMode !== 'asteroids') return;
   if (e.code === 'ArrowUp' || e.code === 'KeyW') keys.up = true;
   if (e.code === 'ArrowDown' || e.code === 'KeyS') keys.down = true;
   if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = true;
@@ -775,6 +801,7 @@ window.addEventListener('keydown', (e) => {
   }
 });
 window.addEventListener('keyup', (e) => {
+  if (window.gameMode !== 'asteroids') return;
   if (e.code === 'ArrowUp' || e.code === 'KeyW') keys.up = false;
   if (e.code === 'ArrowDown' || e.code === 'KeyS') keys.down = false;
   if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = false;
@@ -782,6 +809,7 @@ window.addEventListener('keyup', (e) => {
   if (e.code === 'Space') keys.fire = false;
 });
 
+window.asteroidsEndGame = endGame;
+
 generateStars();
-renderLives();
 gameLoop();

@@ -100,3 +100,10 @@ button:hover {
   box-shadow: 0 0 20px rgba(100, 150, 255, 0.4);
 }
 .hidden { display: none !important; }
+.game-choice {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.game-over button + button { margin-left: 0.75rem; }
