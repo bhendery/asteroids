@@ -721,6 +721,10 @@ function draw() {
 }
 
 function gameLoop() {
+  if (window.activeGame && window.activeGame !== 'asteroids') {
+    requestAnimationFrame(gameLoop);
+    return;
+  }
   update(1);
   draw();
   requestAnimationFrame(gameLoop);
@@ -755,6 +759,76 @@ document.getElementById('restartBtn').onclick = () => {
   document.getElementById('gameOverScreen').classList.add('hidden');
   document.getElementById('startBtn').click();
 };
+
+function showGameSelector() {
+  window.activeGame = null;
+  gameRunning = false;
+  document.getElementById('startScreen').classList.add('hidden');
+  document.getElementById('gameOverScreen').classList.add('hidden');
+  document.getElementById('chessStartScreen').classList.add('hidden');
+  document.getElementById('chessOverScreen').classList.add('hidden');
+  document.getElementById('asteroidsUi').classList.add('hidden');
+  document.getElementById('chessUi').classList.add('hidden');
+  document.getElementById('asteroidsInstructions').classList.add('hidden');
+  document.getElementById('chessInstructions').classList.add('hidden');
+  document.getElementById('lives').classList.add('hidden');
+  document.getElementById('gameTitle').textContent = 'GAME SELECT';
+  document.getElementById('gameSelector').classList.remove('hidden');
+  if (window.chessGame) window.chessGame.stop();
+}
+
+function selectAsteroids() {
+  window.activeGame = 'asteroids';
+  document.getElementById('gameSelector').classList.add('hidden');
+  document.getElementById('chessStartScreen').classList.add('hidden');
+  document.getElementById('chessOverScreen').classList.add('hidden');
+  document.getElementById('chessUi').classList.add('hidden');
+  document.getElementById('chessInstructions').classList.add('hidden');
+  document.getElementById('asteroidsUi').classList.remove('hidden');
+  document.getElementById('asteroidsInstructions').classList.remove('hidden');
+  document.getElementById('lives').classList.remove('hidden');
+  document.getElementById('gameTitle').textContent = 'ASTEROID SHOOTER';
+  document.getElementById('startScreen').classList.remove('hidden');
+  if (window.chessGame) window.chessGame.stop();
+}
+
+function selectChess() {
+  window.activeGame = 'chess';
+  gameRunning = false;
+  document.getElementById('gameSelector').classList.add('hidden');
+  document.getElementById('startScreen').classList.add('hidden');
+  document.getElementById('gameOverScreen').classList.add('hidden');
+  document.getElementById('asteroidsUi').classList.add('hidden');
+  document.getElementById('asteroidsInstructions').classList.add('hidden');
+  document.getElementById('lives').classList.add('hidden');
+  document.getElementById('chessUi').classList.remove('hidden');
+  document.getElementById('chessInstructions').classList.remove('hidden');
+  document.getElementById('gameTitle').textContent = 'SPACE CHESS';
+  document.getElementById('chessStartScreen').classList.remove('hidden');
+}
+
+document.querySelectorAll('.game-option').forEach((btn) => {
+  btn.onclick = () => {
+    const g = btn.getAttribute('data-game');
+    if (g === 'asteroids') selectAsteroids();
+    else if (g === 'chess') selectChess();
+  };
+});
+document.getElementById('backToMenuBtn').onclick = showGameSelector;
+document.getElementById('gameOverMenuBtn').onclick = showGameSelector;
+document.getElementById('chessBackToMenuBtn').onclick = showGameSelector;
+document.getElementById('chessOverMenuBtn').onclick = showGameSelector;
+document.getElementById('chessStartBtn').onclick = () => {
+  document.getElementById('chessStartScreen').classList.add('hidden');
+  document.getElementById('chessOverScreen').classList.add('hidden');
+  if (window.chessGame) window.chessGame.start();
+};
+document.getElementById('chessRestartBtn').onclick = () => {
+  document.getElementById('chessOverScreen').classList.add('hidden');
+  if (window.chessGame) window.chessGame.start();
+};
+
+showGameSelector();
 
 window.addEventListener('keydown', (e) => {
   if (e.code === 'ArrowUp' || e.code === 'KeyW') keys.up = true;

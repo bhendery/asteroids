@@ -7,30 +7,70 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>ASTEROID SHOOTER</h1>
-  <div class="ui">
+  <h1 id="gameTitle">ASTEROID SHOOTER</h1>
+  <div class="ui" id="asteroidsUi">
     <span class="score">SCORE: <span id="score">0</span></span>
+  </div>
+  <div class="ui hidden" id="chessUi">
+    <span class="score" id="chessStatus">WHITE TO MOVE</span>
   </div>
   <div class="canvas-wrap">
     <div id="lives" class="lives-hud" aria-label="Lives remaining"></div>
     <canvas id="gameCanvas" width="800" height="600"></canvas>
   </div>
-  <p class="instructions">ARROWS / WASD — MOVE &nbsp;|&nbsp; SPACE — FIRE &nbsp;|&nbsp; Don't let asteroids hit you!</p>
+  <p class="instructions" id="asteroidsInstructions">ARROWS / WASD — MOVE &nbsp;|&nbsp; SPACE — FIRE &nbsp;|&nbsp; Don't let asteroids hit you!</p>
+  <p class="instructions hidden" id="chessInstructions">CLICK A PIECE TO SELECT &nbsp;|&nbsp; CLICK A HIGHLIGHTED SQUARE TO MOVE</p>
 
-  <div id="startScreen" class="start-screen">
+  <div id="gameSelector" class="start-screen">
+    <h2>CHOOSE YOUR GAME</h2>
+    <p>Select a mission to begin.</p>
+    <div class="game-options">
+      <button class="game-option" data-game="asteroids">
+        <span class="game-option-icon">🚀</span>
+        <span class="game-option-title">ASTEROID SHOOTER</span>
+        <span class="game-option-sub">Blast space rocks &amp; alien saucers.</span>
+      </button>
+      <button class="game-option" data-game="chess">
+        <span class="game-option-icon">👾</span>
+        <span class="game-option-title">SPACE CHESS</span>
+        <span class="game-option-sub">Classic chess with an alien crew.</span>
+      </button>
+    </div>
+  </div>
+
+  <div id="startScreen" class="start-screen hidden">
     <h2>READY TO LAUNCH</h2>
     <p>Destroy asteroids before they hit you.</p>
     <p>Large asteroids split into smaller ones.</p>
     <p>Difficulty increases over time. Good luck!</p>
     <button id="startBtn">START GAME</button>
+    <button id="backToMenuBtn" class="secondary">← BACK TO MENU</button>
+  </div>
+
+  <div id="chessStartScreen" class="start-screen hidden">
+    <h2>SPACE CHESS</h2>
+    <p>Standard chess rules. Pawns auto-promote to Queens.</p>
+    <p>Pieces are aliens — but they move like classic chess pieces.</p>
+    <p>Two players, share the keyboard. Good luck, Commander.</p>
+    <button id="chessStartBtn">START MATCH</button>
+    <button id="chessBackToMenuBtn" class="secondary">← BACK TO MENU</button>
   </div>
 
   <div id="gameOverScreen" class="game-over hidden">
     <h2>GAME OVER</h2>
     <p>Final Score: <span id="finalScore">0</span></p>
     <button id="restartBtn">PLAY AGAIN</button>
+    <button id="gameOverMenuBtn" class="secondary">← BACK TO MENU</button>
   </div>
 
+  <div id="chessOverScreen" class="game-over hidden">
+    <h2 id="chessOverTitle">CHECKMATE</h2>
+    <p id="chessOverMsg">White wins!</p>
+    <button id="chessRestartBtn">PLAY AGAIN</button>
+    <button id="chessOverMenuBtn" class="secondary">← BACK TO MENU</button>
+  </div>
+
+  <script src="chess.js"></script>
   <script src="game.js"></script>
 </body>
 </html>
