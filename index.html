@@ -10,25 +10,57 @@
   <h1>ASTEROID SHOOTER</h1>
   <div class="ui">
     <span class="score">SCORE: <span id="score">0</span></span>
+    <span id="levelLabel" class="level-label hidden">LEVEL <span id="levelNum">1</span> / <span id="levelTotal">8</span></span>
+    <span id="asteroidsLeft" class="asteroids-left hidden">ASTEROIDS: <span id="asteroidsLeftNum">0</span></span>
   </div>
   <div class="canvas-wrap">
     <div id="lives" class="lives-hud" aria-label="Lives remaining"></div>
+    <div id="upgradesHud" class="upgrades-hud" aria-label="Active upgrades"></div>
     <canvas id="gameCanvas" width="800" height="600"></canvas>
   </div>
   <p class="instructions">ARROWS / WASD — MOVE &nbsp;|&nbsp; SPACE — FIRE &nbsp;|&nbsp; Don't let asteroids hit you!</p>
 
   <div id="startScreen" class="start-screen">
     <h2>READY TO LAUNCH</h2>
-    <p>Destroy asteroids before they hit you.</p>
-    <p>Large asteroids split into smaller ones.</p>
-    <p>Difficulty increases over time. Good luck!</p>
-    <button id="startBtn">START GAME</button>
+    <p>Choose your mission.</p>
+    <div class="mode-grid">
+      <button id="arcadeBtn" class="mode-card">
+        <span class="mode-title">ARCADE</span>
+        <span class="mode-desc">Endless waves.<br>Survive as long as you can.</span>
+        <span id="arcadeBest" class="mode-best"></span>
+      </button>
+      <button id="campaignBtn" class="mode-card">
+        <span class="mode-title">CAMPAIGN</span>
+        <span class="mode-desc">8 levels, escalating threats.<br>Upgrade your ship between fights.</span>
+        <span id="campaignBest" class="mode-best"></span>
+      </button>
+    </div>
+  </div>
+
+  <div id="levelIntroScreen" class="overlay hidden">
+    <h2 id="levelIntroTitle">LEVEL 1</h2>
+    <p id="levelIntroSubtitle">Clear the field.</p>
+  </div>
+
+  <div id="upgradeScreen" class="overlay hidden">
+    <h2>LEVEL CLEARED</h2>
+    <p class="upgrade-sub">Select an upgrade.</p>
+    <div id="upgradeChoices" class="upgrade-grid"></div>
+  </div>
+
+  <div id="victoryScreen" class="overlay hidden">
+    <h2 class="victory-title">CAMPAIGN COMPLETE</h2>
+    <p>You survived all 8 levels.</p>
+    <p>Final Score: <span id="victoryScore">0</span></p>
+    <button id="victoryBtn">RETURN TO MENU</button>
   </div>
 
   <div id="gameOverScreen" class="game-over hidden">
     <h2>GAME OVER</h2>
     <p>Final Score: <span id="finalScore">0</span></p>
+    <p id="gameOverDetail"></p>
     <button id="restartBtn">PLAY AGAIN</button>
+    <button id="menuBtn">MAIN MENU</button>
   </div>
 
   <script src="game.js"></script>
