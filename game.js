@@ -5,15 +5,37 @@ const ctx = canvas.getContext('2d');
 let gameRunning = false;
 let score = 0;
 let lives = 3;
+let maxLives = 3;
 let gameTime = 0;
 let keys = { up: false, down: false, left: false, right: false, fire: false };
 
-// Player
+// Mode + campaign state
+let mode = 'arcade'; // 'arcade' | 'campaign'
+let campaignLevel = 1;
+let levelPhase = 'idle'; // 'idle' | 'intro' | 'playing' | 'upgrade' | 'victory'
+let levelIntroTimer = 0;
+let levelClearTimer = 0;
+let saucerSpawnCooldown = 0;
+const TOTAL_LEVELS = 8;
+
+const LEVELS = [
+  { large: 3, saucerChance: 0,    eliteChance: 0,    saucerEvery: 0,   boss: false, subtitle: 'Clear the field.' },
+  { large: 4, saucerChance: 0.55, eliteChance: 0,    saucerEvery: 540, boss: false, subtitle: 'Saucers inbound.' },
+  { large: 5, saucerChance: 0.75, eliteChance: 0,    saucerEvery: 480, boss: false, subtitle: 'Heavier resistance.' },
+  { large: 6, saucerChance: 0.4,  eliteChance: 0.5,  saucerEvery: 480, boss: false, subtitle: 'Elites detected.' },
+  { large: 7, saucerChance: 0.6,  eliteChance: 0.4,  saucerEvery: 420, boss: false, subtitle: 'Field is dense.' },
+  { large: 5, saucerChance: 0.4,  eliteChance: 0.7,  saucerEvery: 380, boss: false, subtitle: 'Elite squadron.' },
+  { large: 6, saucerChance: 0.5,  eliteChance: 0.65, saucerEvery: 360, boss: false, subtitle: 'Final approach.' },
+  { large: 4, saucerChance: 0,    eliteChance: 0,    saucerEvery: 0,   boss: true,  subtitle: 'BOSS: MEGASHIP' },
+];
+
+// Player + upgrades
 const player = {
   x: canvas.width / 2,
   y: canvas.height / 2,
   angle: -Math.PI / 2,
   speed: 0,
+  baseMaxSpeed: 5,
   maxSpeed: 5,
   acceleration: 0.15,
   friction: 0.98,
@@ -21,6 +43,23 @@ const player = {
   radius: 18,
   invincibleUntil: 0,
 };
+
+const playerUpgrades = {
+  rapidFire: 0,    // 0 = single-shot on press; 1-3 = held auto-fire, faster per rank
+  multishot: 0,    // 0-2 extra side-bullet pairs
+  hullPlating: 0,  // +1 max life per rank
+  speedBoost: 0,   // +15% top speed per rank
+  sharpshooter: 0, // bullets fly faster and longer per rank
+};
+
+const UPGRADES = [
+  { id: 'rapidFire',    name: 'RAPID FIRE',    max: 3, desc: 'Hold SPACE to auto-fire.' },
+  { id: 'multishot',    name: 'SPREAD SHOT',   max: 2, desc: '+1 pair of side bullets per shot.' },
+  { id: 'hullPlating',  name: 'HULL PLATING',  max: 3, desc: '+1 max life and refill.' },
+  { id: 'speedBoost',   name: 'AFTERBURNER',   max: 3, desc: '+15% top speed.' },
+  { id: 'sharpshooter', name: 'SHARPSHOOTER',  max: 3, desc: 'Bullets fly faster and farther.' },
+  { id: 'repair',       name: 'EMERGENCY REPAIR', max: 99, desc: 'Restore 1 life.' },
+];
 
 let bullets = [];
 let enemyBullets = [];
@@ -32,6 +71,7 @@ let firstSaucerSpawned = false;
 let megaship = null;
 let megashipSpawned = false;
 let warning = null;
+let fireCooldown = 0;
 
 const ASTEROID_SIZES = { large: 3, medium: 2, small: 1 };
 const ASTEROID_POINTS = { large: 20, medium: 50, small: 100 };
@@ -50,6 +90,17 @@ const MEGASHIP_HP = 12;
 const MEGASHIP_POINTS = 2000;
 const MEGASHIP_SPEED = 0.35;
 const MEGASHIP_FIRE_INTERVAL = 70;
+
+const STORAGE_KEY = 'asteroidsProgress';
+
+function loadProgress() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch { return {}; }
+}
+function saveProgress(patch) {
+  const p = { ...loadProgress(), ...patch };
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(p)); } catch {}
+  return p;
+}
 
 function rand(min, max) {
   return min + Math.random() * (max - min);
@@ -109,7 +160,10 @@ function spawnAsteroid(size = 'large', atX, atY) {
   const baseSpeed = size === 'large' ? rand(0.5, 1.1) : size === 'medium' ? rand(0.7, 1.4) : rand(0.9, 1.8);
   const towardPlayer = Math.atan2(canvas.height / 2 - y, canvas.width / 2 - x);
   const angle = towardPlayer + rand(-0.8, 0.8);
-  const speed = baseSpeed * (0.5 + Math.min(gameTime / 500, 0.9));
+  const difficulty = mode === 'campaign'
+    ? 0.6 + campaignLevel * 0.08
+    : 0.5 + Math.min(gameTime / 500, 0.9);
+  const speed = baseSpeed * difficulty;
   const verts = 8 + Math.floor(Math.random() * 4);
   const shape = [];
   for (let i = 0; i < verts; i++) {
@@ -123,6 +177,7 @@ function spawnAsteroid(size = 'large', atX, atY) {
 }
 
 function aimAtPlayer() {
+  if (mode !== 'arcade') return;
   const difficultyFactor = Math.min(1 + gameTime / 180, 2.2);
   const spawnRate = 140 + 160 / difficultyFactor;
   if (gameTime > 0 && Math.random() < 1 / spawnRate) {
@@ -150,15 +205,30 @@ function spawnSaucer(elite = false) {
 
 function maybeSpawnSaucer() {
   if (!gameRunning) return;
-  if (!firstSaucerSpawned && gameTime >= 180 && gameTime <= 600) {
-    if (Math.random() < 1 / 80) {
-      spawnSaucer(false);
-      firstSaucerSpawned = true;
+  if (mode === 'arcade') {
+    if (!firstSaucerSpawned && gameTime >= 180 && gameTime <= 600) {
+      if (Math.random() < 1 / 80) {
+        spawnSaucer(false);
+        firstSaucerSpawned = true;
+      }
     }
+    if (firstSaucerSpawned && saucers.length < 2 && gameTime > 0 && Math.random() < 1 / 450) {
+      const elite = gameTime >= 600 && Math.random() < 0.35;
+      spawnSaucer(elite);
+    }
+    return;
   }
-  if (firstSaucerSpawned && saucers.length < 2 && gameTime > 0 && Math.random() < 1 / 450) {
-    const elite = gameTime >= 600 && Math.random() < 0.35;
-    spawnSaucer(elite);
+  // Campaign: scheduled saucer waves per level
+  if (levelPhase !== 'playing') return;
+  const cfg = LEVELS[campaignLevel - 1];
+  if (!cfg.saucerEvery || saucers.length >= 2) return;
+  saucerSpawnCooldown--;
+  if (saucerSpawnCooldown <= 0) {
+    saucerSpawnCooldown = cfg.saucerEvery;
+    if (Math.random() < cfg.saucerChance + cfg.eliteChance) {
+      const eliteRoll = cfg.eliteChance / (cfg.saucerChance + cfg.eliteChance);
+      spawnSaucer(Math.random() < eliteRoll);
+    }
   }
 }
 
@@ -175,6 +245,7 @@ function spawnMegaship() {
     angle: fromLeft ? 0 : Math.PI,
     lastShot: gameTime,
     sineOffset: Math.random() * Math.PI * 2,
+    boss: mode === 'campaign',
   };
   megashipSpawned = true;
   warning = { timer: 180 };
@@ -182,9 +253,10 @@ function spawnMegaship() {
 
 function maybeSpawnMegaship() {
   if (!gameRunning || megashipSpawned) return;
-  if (gameTime >= 1800 && Math.random() < 1 / 300) {
-    spawnMegaship();
+  if (mode === 'arcade') {
+    if (gameTime >= 1800 && Math.random() < 1 / 300) spawnMegaship();
   }
+  // Campaign boss is spawned explicitly at level start.
 }
 
 function drawSaucer(s) {
@@ -220,7 +292,6 @@ function drawMegaship(m) {
   ctx.translate(m.x, m.y);
   ctx.rotate(m.angle);
 
-  // Engine nacelle glow (behind hull)
   for (const sign of [1, -1]) {
     const grd = ctx.createRadialGradient(-R * 0.82, sign * R * 0.5, 0, -R * 0.82, sign * R * 0.5, R * 0.24);
     grd.addColorStop(0, 'rgba(255, 140, 20, 0.9)');
@@ -231,7 +302,6 @@ function drawMegaship(m) {
     ctx.fill();
   }
 
-  // Side nacelles
   ctx.strokeStyle = '#ff5500';
   ctx.fillStyle = 'rgba(140, 40, 5, 0.6)';
   ctx.lineWidth = 2;
@@ -242,7 +312,6 @@ function drawMegaship(m) {
     ctx.stroke();
   }
 
-  // Main hull
   ctx.strokeStyle = '#ff6600';
   ctx.fillStyle = 'rgba(160, 50, 10, 0.55)';
   ctx.lineWidth = 2.5;
@@ -263,7 +332,6 @@ function drawMegaship(m) {
   ctx.fill();
   ctx.stroke();
 
-  // Hull detail lines
   ctx.strokeStyle = 'rgba(255, 140, 60, 0.4)';
   ctx.lineWidth = 1;
   ctx.beginPath();
@@ -271,7 +339,6 @@ function drawMegaship(m) {
   ctx.moveTo(R * 0.6, -R * 0.12); ctx.lineTo(-R * 0.55, -R * 0.12);
   ctx.stroke();
 
-  // Gun turrets
   ctx.fillStyle = 'rgba(255, 130, 20, 0.75)';
   ctx.strokeStyle = '#ff9900';
   ctx.lineWidth = 1.5;
@@ -282,7 +349,6 @@ function drawMegaship(m) {
     ctx.stroke();
   }
 
-  // Bridge dome
   ctx.fillStyle = 'rgba(255, 210, 120, 0.55)';
   ctx.strokeStyle = '#ffcc44';
   ctx.lineWidth = 1.5;
@@ -293,7 +359,6 @@ function drawMegaship(m) {
 
   ctx.restore();
 
-  // Health bar and label (world coordinates)
   ctx.save();
   const barW = R * 2.8;
   const barH = 7;
@@ -310,7 +375,7 @@ function drawMegaship(m) {
   ctx.font = '9px Orbitron, monospace';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('MEGASHIP', m.x, barY - 2);
+  ctx.fillText(m.boss ? 'BOSS — MEGASHIP' : 'MEGASHIP', m.x, barY - 2);
   ctx.restore();
 }
 
@@ -347,15 +412,11 @@ function drawShip() {
   ctx.fillStyle = 'rgba(124, 252, 0, 0.2)';
   ctx.lineWidth = 2;
   ctx.beginPath();
-  // Nose (slightly rounded)
   ctx.moveTo(r, 0);
-  // Starboard side → rear engine pod
   ctx.lineTo(r * 0.25, r * 0.5);
   ctx.lineTo(-r * 0.55, r * 0.52);
   ctx.lineTo(-r * 0.92, r * 0.42);
-  // Center rear
   ctx.lineTo(-r * 0.5, 0);
-  // Port rear engine pod → port side
   ctx.lineTo(-r * 0.92, -r * 0.42);
   ctx.lineTo(-r * 0.55, -r * 0.52);
   ctx.lineTo(r * 0.25, -r * 0.5);
@@ -434,16 +495,13 @@ function breakSaucer(saucer, bulletIndex) {
     addParticles(saucer.x, saucer.y, saucer.elite ? '#ff4d6d' : '#a0c0e0', 4);
     return;
   }
-  score += saucer.elite ? ELITE_SAUCER_POINTS : SAUCER_POINTS;
-  document.getElementById('score').textContent = score;
+  addScore(saucer.elite ? ELITE_SAUCER_POINTS : SAUCER_POINTS);
   addParticles(saucer.x, saucer.y, saucer.elite ? '#ff4d6d' : '#a0c0e0', saucer.elite ? 18 : 10);
   saucers.splice(saucers.indexOf(saucer), 1);
 }
 
 function breakAsteroid(asteroid, bulletIndex) {
-  const pts = ASTEROID_POINTS[asteroid.size];
-  score += pts;
-  document.getElementById('score').textContent = score;
+  addScore(ASTEROID_POINTS[asteroid.size]);
   addParticles(asteroid.x, asteroid.y, '#c9a227', 12);
 
   const nextSize = asteroid.size === 'large' ? 'medium' : asteroid.size === 'medium' ? 'small' : null;
@@ -454,6 +512,11 @@ function breakAsteroid(asteroid, bulletIndex) {
 
   asteroids.splice(asteroids.indexOf(asteroid), 1);
   if (bulletIndex >= 0) bullets.splice(bulletIndex, 1);
+}
+
+function addScore(n) {
+  score += n;
+  document.getElementById('score').textContent = score;
 }
 
 const SHIP_ICON_POINTS = '0,-16 8,-4 8.4,8.8 6.7,14.7 0,8 -6.7,14.7 -8.4,8.8 -8,-4';
@@ -475,6 +538,32 @@ function renderLives() {
   }
 }
 
+function renderUpgradesHud() {
+  const el = document.getElementById('upgradesHud');
+  el.innerHTML = '';
+  if (mode !== 'campaign') return;
+  for (const u of UPGRADES) {
+    if (u.id === 'repair') continue;
+    const rank = playerUpgrades[u.id] || 0;
+    if (rank <= 0) continue;
+    const pip = document.createElement('div');
+    pip.className = 'pip';
+    pip.textContent = `${u.name} ${'I'.repeat(rank)}`;
+    el.appendChild(pip);
+  }
+}
+
+function renderCampaignHud() {
+  const showCampaign = mode === 'campaign' && (levelPhase === 'playing' || levelPhase === 'intro' || levelPhase === 'upgrade');
+  document.getElementById('levelLabel').classList.toggle('hidden', !showCampaign);
+  document.getElementById('asteroidsLeft').classList.toggle('hidden', !showCampaign);
+  if (showCampaign) {
+    document.getElementById('levelNum').textContent = campaignLevel;
+    document.getElementById('levelTotal').textContent = TOTAL_LEVELS;
+    document.getElementById('asteroidsLeftNum').textContent = asteroids.length;
+  }
+}
+
 function hurtPlayer() {
   lives--;
   const container = document.getElementById('lives');
@@ -492,15 +581,200 @@ function hurtPlayer() {
 
 function endGame() {
   gameRunning = false;
+  levelPhase = 'idle';
   document.getElementById('finalScore').textContent = score;
+  const detail = document.getElementById('gameOverDetail');
+  if (mode === 'campaign') {
+    detail.textContent = `Reached Level ${campaignLevel} of ${TOTAL_LEVELS}`;
+    saveProgress({ bestCampaignLevel: Math.max(loadProgress().bestCampaignLevel || 1, campaignLevel) });
+  } else {
+    const prev = loadProgress().arcadeHighScore || 0;
+    if (score > prev) {
+      saveProgress({ arcadeHighScore: score });
+      detail.textContent = `Congratulations, NEW HIGH SCORE`;
+    } else {
+      detail.textContent = `Best: ${prev}`;
+    }
+  }
   document.getElementById('gameOverScreen').classList.remove('hidden');
+}
+
+function applyUpgrade(id) {
+  if (id === 'repair') {
+    if (lives < maxLives) lives = Math.min(lives + 1, maxLives);
+    renderLives();
+    return;
+  }
+  playerUpgrades[id] = (playerUpgrades[id] || 0) + 1;
+  if (id === 'hullPlating') {
+    maxLives++;
+    lives = maxLives;
+    renderLives();
+  }
+  if (id === 'speedBoost') {
+    player.maxSpeed = player.baseMaxSpeed * (1 + 0.15 * playerUpgrades.speedBoost);
+  }
+  renderUpgradesHud();
+}
+
+function getAvailableUpgrades() {
+  return UPGRADES.filter(u => {
+    if (u.id === 'repair') return lives < maxLives;
+    return (playerUpgrades[u.id] || 0) < u.max;
+  });
+}
+
+function pickUpgradeChoices() {
+  const pool = getAvailableUpgrades();
+  const choices = [];
+  const work = [...pool];
+  while (choices.length < 3 && work.length > 0) {
+    const idx = Math.floor(Math.random() * work.length);
+    choices.push(work.splice(idx, 1)[0]);
+  }
+  return choices;
+}
+
+function showUpgradeScreen() {
+  levelPhase = 'upgrade';
+  const choices = pickUpgradeChoices();
+  const wrap = document.getElementById('upgradeChoices');
+  wrap.innerHTML = '';
+  if (choices.length === 0) {
+    advanceToNextLevel();
+    return;
+  }
+  for (const u of choices) {
+    const card = document.createElement('button');
+    card.className = 'upgrade-card';
+    const rank = playerUpgrades[u.id] || 0;
+    const rankText = u.id === 'repair' ? '' : `Rank ${rank} → ${rank + 1} (max ${u.max})`;
+    card.innerHTML = `
+      <span class="upgrade-name">${u.name}</span>
+      <span class="upgrade-rank">${rankText}</span>
+      <span class="upgrade-desc">${u.desc}</span>
+    `;
+    card.onclick = () => {
+      applyUpgrade(u.id);
+      document.getElementById('upgradeScreen').classList.add('hidden');
+      advanceToNextLevel();
+    };
+    wrap.appendChild(card);
+  }
+  document.getElementById('upgradeScreen').classList.remove('hidden');
+}
+
+function startLevel(levelNum) {
+  campaignLevel = levelNum;
+  levelPhase = 'intro';
+  levelIntroTimer = 120;
+  const cfg = LEVELS[levelNum - 1];
+  asteroids = [];
+  saucers = [];
+  bullets = [];
+  enemyBullets = [];
+  megaship = null;
+  megashipSpawned = false;
+  warning = null;
+  firstSaucerSpawned = false;
+  saucerSpawnCooldown = cfg.saucerEvery;
+  player.x = canvas.width / 2;
+  player.y = canvas.height / 2;
+  player.speed = 0;
+  player.angle = -Math.PI / 2;
+  player.invincibleUntil = gameTime + 90;
+  document.getElementById('levelIntroTitle').textContent = `LEVEL ${levelNum}`;
+  document.getElementById('levelIntroSubtitle').textContent = cfg.subtitle;
+  document.getElementById('levelIntroScreen').classList.remove('hidden');
+  renderCampaignHud();
+}
+
+function beginLevelPlay() {
+  const cfg = LEVELS[campaignLevel - 1];
+  document.getElementById('levelIntroScreen').classList.add('hidden');
+  for (let i = 0; i < cfg.large; i++) spawnAsteroid('large');
+  if (cfg.boss) spawnMegaship();
+  levelPhase = 'playing';
+}
+
+function advanceToNextLevel() {
+  if (campaignLevel >= TOTAL_LEVELS) {
+    winCampaign();
+    return;
+  }
+  startLevel(campaignLevel + 1);
+}
+
+function winCampaign() {
+  gameRunning = false;
+  levelPhase = 'victory';
+  document.getElementById('victoryScore').textContent = score;
+  document.getElementById('victoryScreen').classList.remove('hidden');
+  const prev = loadProgress();
+  saveProgress({
+    bestCampaignLevel: TOTAL_LEVELS,
+    campaignClears: (prev.campaignClears || 0) + 1,
+    campaignBestScore: Math.max(prev.campaignBestScore || 0, score),
+  });
+}
+
+function checkLevelClear() {
+  if (mode !== 'campaign' || levelPhase !== 'playing') return;
+  if (asteroids.length > 0) return;
+  if (megaship) return;
+  levelClearTimer++;
+  if (levelClearTimer >= 60) {
+    levelClearTimer = 0;
+    if (campaignLevel >= TOTAL_LEVELS) {
+      winCampaign();
+    } else {
+      showUpgradeScreen();
+    }
+  }
+}
+
+function fireBullet() {
+  if (fireCooldown > 0) return;
+  const baseAngle = player.angle;
+  const sharp = playerUpgrades.sharpshooter || 0;
+  const bulletSpeed = 12 + sharp * 2;
+  const bulletLife = 90 + sharp * 25;
+  const ms = playerUpgrades.multishot || 0;
+  const offsets = [0];
+  for (let i = 1; i <= ms; i++) {
+    offsets.push(0.13 * i);
+    offsets.push(-0.13 * i);
+  }
+  for (const off of offsets) {
+    const a = baseAngle + off;
+    bullets.push({
+      x: player.x + Math.cos(a) * player.radius,
+      y: player.y + Math.sin(a) * player.radius,
+      vx: Math.cos(a) * bulletSpeed,
+      vy: Math.sin(a) * bulletSpeed,
+      life: bulletLife,
+    });
+  }
+  const rf = playerUpgrades.rapidFire || 0;
+  fireCooldown = rf > 0 ? Math.max(4, 14 - rf * 3) : 8;
 }
 
 function update(dt) {
   if (!gameRunning) return;
+  if (levelPhase === 'intro') {
+    levelIntroTimer--;
+    if (levelIntroTimer <= 0) beginLevelPlay();
+    return;
+  }
+  if (levelPhase === 'upgrade') return;
   gameTime++;
+  if (fireCooldown > 0) fireCooldown--;
 
-  // Player movement
+  // Auto-fire while held (rapid fire upgrade)
+  if (keys.fire && (playerUpgrades.rapidFire || 0) > 0 && fireCooldown === 0) {
+    fireBullet();
+  }
+
   if (keys.left) player.angle -= player.turnSpeed;
   if (keys.right) player.angle += player.turnSpeed;
   if (keys.up) {
@@ -523,18 +797,23 @@ function update(dt) {
       bullets.splice(i, 1);
       continue;
     }
+    let consumed = false;
     for (let j = asteroids.length - 1; j >= 0; j--) {
       if (hitTestBulletAsteroid(b, asteroids[j])) {
         breakAsteroid(asteroids[j], i);
+        consumed = true;
         break;
       }
     }
+    if (consumed) continue;
     for (let j = saucers.length - 1; j >= 0; j--) {
       if (hitTestBulletSaucer(b, saucers[j])) {
         breakSaucer(saucers[j], i);
+        consumed = true;
         break;
       }
     }
+    if (consumed) continue;
     if (megaship) {
       const mdx = b.x - megaship.x;
       const mdy = b.y - megaship.y;
@@ -543,8 +822,7 @@ function update(dt) {
         bullets.splice(i, 1);
         addParticles(b.x, b.y, '#ff6600', 5);
         if (megaship.hp <= 0) {
-          score += MEGASHIP_POINTS;
-          document.getElementById('score').textContent = score;
+          addScore(MEGASHIP_POINTS);
           addParticles(megaship.x, megaship.y, '#ff6600', 40);
           addParticles(megaship.x, megaship.y, '#ffaa00', 30);
           megaship = null;
@@ -599,6 +877,11 @@ function update(dt) {
   if (megaship) {
     megaship.x += megaship.vx;
     megaship.y += Math.sin(gameTime * 0.025 + megaship.sineOffset) * 0.6;
+    // In campaign boss fight, keep boss on screen by reversing when near edges
+    if (megaship.boss) {
+      if (megaship.x < MEGASHIP_RADIUS + 20) megaship.vx = Math.abs(megaship.vx);
+      if (megaship.x > canvas.width - MEGASHIP_RADIUS - 20) megaship.vx = -Math.abs(megaship.vx);
+    }
     if (gameTime - megaship.lastShot >= MEGASHIP_FIRE_INTERVAL) {
       const baseAngle = Math.atan2(player.y - megaship.y, player.x - megaship.x);
       for (const offset of [-0.3, 0, 0.3]) {
@@ -621,7 +904,7 @@ function update(dt) {
         hurtPlayer();
       }
     }
-    if (megaship.x < -MEGASHIP_RADIUS * 3 || megaship.x > canvas.width + MEGASHIP_RADIUS * 3) {
+    if (!megaship.boss && (megaship.x < -MEGASHIP_RADIUS * 3 || megaship.x > canvas.width + MEGASHIP_RADIUS * 3)) {
       megaship = null;
     }
   }
@@ -646,7 +929,6 @@ function update(dt) {
     }
   }
 
-  // Asteroids
   aimAtPlayer();
   for (const a of asteroids) {
     a.x += a.vx;
@@ -663,7 +945,6 @@ function update(dt) {
     }
   }
 
-  // Particles
   for (let i = particles.length - 1; i >= 0; i--) {
     const p = particles[i];
     p.x += p.vx;
@@ -671,13 +952,15 @@ function update(dt) {
     p.life -= 0.03;
     if (p.life <= 0) particles.splice(i, 1);
   }
+
+  renderCampaignHud();
+  checkLevelClear();
 }
 
 function draw() {
   ctx.fillStyle = '#050508';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Stars (size by distance to player: closer = larger, at most 4x smallest)
   const minStarSize = 0.5;
   const maxStarSize = 2;
   const maxDist = Math.hypot(canvas.width, canvas.height) * 0.55;
@@ -726,15 +1009,16 @@ function gameLoop() {
   requestAnimationFrame(gameLoop);
 }
 
-document.getElementById('startBtn').onclick = () => {
-  document.getElementById('startScreen').classList.add('hidden');
+function resetCommon() {
   score = 0;
-  lives = 3;
   gameTime = 0;
+  maxLives = 3;
+  lives = 3;
   player.x = canvas.width / 2;
   player.y = canvas.height / 2;
   player.angle = -Math.PI / 2;
   player.speed = 0;
+  player.maxSpeed = player.baseMaxSpeed;
   player.invincibleUntil = 90;
   bullets = [];
   enemyBullets = [];
@@ -745,16 +1029,70 @@ document.getElementById('startBtn').onclick = () => {
   megaship = null;
   megashipSpawned = false;
   warning = null;
+  fireCooldown = 0;
   document.getElementById('score').textContent = '0';
+  for (const k of Object.keys(playerUpgrades)) playerUpgrades[k] = 0;
+  renderUpgradesHud();
   renderLives();
   generateStars();
-  gameRunning = true;
-};
+}
 
-document.getElementById('restartBtn').onclick = () => {
+function startArcade() {
+  mode = 'arcade';
+  hideAllScreens();
+  resetCommon();
+  levelPhase = 'idle';
+  renderCampaignHud();
+  gameRunning = true;
+}
+
+function startCampaign() {
+  mode = 'campaign';
+  hideAllScreens();
+  resetCommon();
+  gameRunning = true;
+  startLevel(1);
+}
+
+function hideAllScreens() {
+  document.getElementById('startScreen').classList.add('hidden');
   document.getElementById('gameOverScreen').classList.add('hidden');
-  document.getElementById('startBtn').click();
+  document.getElementById('upgradeScreen').classList.add('hidden');
+  document.getElementById('victoryScreen').classList.add('hidden');
+  document.getElementById('levelIntroScreen').classList.add('hidden');
+}
+
+function showMainMenu() {
+  hideAllScreens();
+  gameRunning = false;
+  levelPhase = 'idle';
+  renderCampaignHud();
+  refreshMenuStats();
+  document.getElementById('startScreen').classList.remove('hidden');
+}
+
+function refreshMenuStats() {
+  const p = loadProgress();
+  const a = document.getElementById('arcadeBest');
+  a.textContent = p.arcadeHighScore ? `Best: ${p.arcadeHighScore}` : '';
+  const c = document.getElementById('campaignBest');
+  if (p.campaignClears) {
+    c.textContent = `Cleared × ${p.campaignClears} · Best score ${p.campaignBestScore || 0}`;
+  } else if (p.bestCampaignLevel) {
+    c.textContent = `Best: Level ${p.bestCampaignLevel}`;
+  } else {
+    c.textContent = '';
+  }
+}
+
+document.getElementById('arcadeBtn').onclick = startArcade;
+document.getElementById('campaignBtn').onclick = startCampaign;
+document.getElementById('restartBtn').onclick = () => {
+  if (mode === 'campaign') startCampaign();
+  else startArcade();
 };
+document.getElementById('menuBtn').onclick = showMainMenu;
+document.getElementById('victoryBtn').onclick = showMainMenu;
 
 window.addEventListener('keydown', (e) => {
   if (e.code === 'ArrowUp' || e.code === 'KeyW') keys.up = true;
@@ -763,14 +1101,9 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = true;
   if (e.code === 'Space') {
     e.preventDefault();
-    if (!e.repeat && gameRunning) {
-      bullets.push({
-        x: player.x + Math.cos(player.angle) * player.radius,
-        y: player.y + Math.sin(player.angle) * player.radius,
-        vx: Math.cos(player.angle) * 12,
-        vy: Math.sin(player.angle) * 12,
-        life: 90,
-      });
+    keys.fire = true;
+    if (!e.repeat && gameRunning && levelPhase !== 'intro' && levelPhase !== 'upgrade') {
+      fireBullet();
     }
   }
 });
@@ -782,6 +1115,7 @@ window.addEventListener('keyup', (e) => {
   if (e.code === 'Space') keys.fire = false;
 });
 
+refreshMenuStats();
 generateStars();
 renderLives();
 gameLoop();
