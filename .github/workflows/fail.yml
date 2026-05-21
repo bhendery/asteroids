@@ -1,9 +1,9 @@
 name: Fail
 
-  on:
+on:
     pull_request:
 
-  jobs:
+jobs:
     fail:
       runs-on: ubuntu-latest
 
