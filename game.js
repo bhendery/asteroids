@@ -195,8 +195,8 @@ function drawSaucer(s) {
     ctx.fillStyle = 'rgba(255, 77, 109, 0.35)';
     ctx.lineWidth = 2.5;
   } else {
-    ctx.strokeStyle = '#a0c0e0';
-    ctx.fillStyle = 'rgba(160, 192, 224, 0.35)';
+    ctx.strokeStyle = '#ffb6c1';
+    ctx.fillStyle = 'rgba(255, 182, 193, 0.35)';
     ctx.lineWidth = 2;
   }
   ctx.beginPath();
@@ -431,12 +431,12 @@ function breakSaucer(saucer, bulletIndex) {
   saucer.hp--;
   if (bulletIndex >= 0) bullets.splice(bulletIndex, 1);
   if (saucer.hp > 0) {
-    addParticles(saucer.x, saucer.y, saucer.elite ? '#ff4d6d' : '#a0c0e0', 4);
+    addParticles(saucer.x, saucer.y, saucer.elite ? '#ff4d6d' : '#ffb6c1', 4);
     return;
   }
   score += saucer.elite ? ELITE_SAUCER_POINTS : SAUCER_POINTS;
   document.getElementById('score').textContent = score;
-  addParticles(saucer.x, saucer.y, saucer.elite ? '#ff4d6d' : '#a0c0e0', saucer.elite ? 18 : 10);
+  addParticles(saucer.x, saucer.y, saucer.elite ? '#ff4d6d' : '#ffb6c1', saucer.elite ? 18 : 10);
   saucers.splice(saucers.indexOf(saucer), 1);
 }
 
