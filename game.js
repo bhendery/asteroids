@@ -591,7 +591,7 @@ function endGame() {
     const prev = loadProgress().arcadeHighScore || 0;
     if (score > prev) {
       saveProgress({ arcadeHighScore: score });
-      detail.textContent = `Congratulations, NEW HIGH SCORE`;
+      detail.textContent = `CONGRATULATIONS, NEW HIGH SCORE`;
     } else {
       detail.textContent = `Best: ${prev}`;
     }
