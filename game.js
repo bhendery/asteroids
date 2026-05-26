@@ -494,7 +494,39 @@ function endGame() {
   gameRunning = false;
   document.getElementById('finalScore').textContent = score;
   document.getElementById('gameOverScreen').classList.remove('hidden');
+  showAsteroidsGameOverLeaderboard();
 }
+
+function showAsteroidsGameOverLeaderboard() {
+  const promptEl = document.getElementById('asteroidsNewHighScore');
+  const listEl = document.getElementById('asteroidsOverLeaderboard');
+  const eligible = score > 0 && window.Leaderboard && window.Leaderboard.qualifies('asteroids', score);
+  if (eligible) {
+    promptEl.classList.remove('hidden');
+    const input = document.getElementById('asteroidsNameInput');
+    input.value = '';
+    setTimeout(() => input.focus(), 50);
+  } else {
+    promptEl.classList.add('hidden');
+  }
+  window.Leaderboard.render('asteroids', listEl);
+}
+
+function submitAsteroidsScore() {
+  const input = document.getElementById('asteroidsNameInput');
+  const name = (input.value || 'AAA').trim() || 'AAA';
+  const { entry } = window.Leaderboard.submit('asteroids', name, score);
+  document.getElementById('asteroidsNewHighScore').classList.add('hidden');
+  window.Leaderboard.render('asteroids', document.getElementById('asteroidsOverLeaderboard'), entry);
+}
+
+document.getElementById('asteroidsSubmitScoreBtn').onclick = submitAsteroidsScore;
+document.getElementById('asteroidsNameInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    submitAsteroidsScore();
+  }
+});
 
 function update(dt) {
   if (!gameRunning) return;
@@ -732,6 +764,7 @@ function gameLoop() {
 
 document.getElementById('startBtn').onclick = () => {
   document.getElementById('startScreen').classList.add('hidden');
+  document.getElementById('asteroidsNewHighScore').classList.add('hidden');
   score = 0;
   lives = 3;
   gameTime = 0;
@@ -789,6 +822,7 @@ function selectAsteroids() {
   document.getElementById('lives').classList.remove('hidden');
   document.getElementById('gameTitle').textContent = 'ASTEROID SHOOTER';
   document.getElementById('startScreen').classList.remove('hidden');
+  if (window.Leaderboard) window.Leaderboard.render('asteroids', document.getElementById('asteroidsStartLeaderboard'));
   if (window.chessGame) window.chessGame.stop();
 }
 
@@ -805,6 +839,7 @@ function selectChess() {
   document.getElementById('chessInstructions').classList.remove('hidden');
   document.getElementById('gameTitle').textContent = 'SPACE CHESS';
   document.getElementById('chessStartScreen').classList.remove('hidden');
+  if (window.Leaderboard) window.Leaderboard.render('chess', document.getElementById('chessStartLeaderboard'));
 }
 
 document.querySelectorAll('.game-option').forEach((btn) => {

@@ -43,6 +43,10 @@
     <p>Destroy asteroids before they hit you.</p>
     <p>Large asteroids split into smaller ones.</p>
     <p>Difficulty increases over time. Good luck!</p>
+    <div class="leaderboard-panel">
+      <h3>HIGH SCORES</h3>
+      <div id="asteroidsStartLeaderboard" class="leaderboard"></div>
+    </div>
     <button id="startBtn">START GAME</button>
     <button id="backToMenuBtn" class="secondary">← BACK TO MENU</button>
   </div>
@@ -52,6 +56,10 @@
     <p>Standard chess rules. Pawns auto-promote to Queens.</p>
     <p>Pieces are aliens — but they move like classic chess pieces.</p>
     <p>Two players, share the keyboard. Good luck, Commander.</p>
+    <div class="leaderboard-panel">
+      <h3>FASTEST CHECKMATES</h3>
+      <div id="chessStartLeaderboard" class="leaderboard"></div>
+    </div>
     <button id="chessStartBtn">START MATCH</button>
     <button id="chessBackToMenuBtn" class="secondary">← BACK TO MENU</button>
   </div>
@@ -59,6 +67,15 @@
   <div id="gameOverScreen" class="game-over hidden">
     <h2>GAME OVER</h2>
     <p>Final Score: <span id="finalScore">0</span></p>
+    <div id="asteroidsNewHighScore" class="new-highscore hidden">
+      <p>NEW HIGH SCORE!</p>
+      <input id="asteroidsNameInput" type="text" maxlength="12" placeholder="ENTER NAME" autocomplete="off" />
+      <button id="asteroidsSubmitScoreBtn">SUBMIT</button>
+    </div>
+    <div class="leaderboard-panel">
+      <h3>HIGH SCORES</h3>
+      <div id="asteroidsOverLeaderboard" class="leaderboard"></div>
+    </div>
     <button id="restartBtn">PLAY AGAIN</button>
     <button id="gameOverMenuBtn" class="secondary">← BACK TO MENU</button>
   </div>
@@ -66,10 +83,20 @@
   <div id="chessOverScreen" class="game-over hidden">
     <h2 id="chessOverTitle">CHECKMATE</h2>
     <p id="chessOverMsg">White wins!</p>
+    <div id="chessNewHighScore" class="new-highscore hidden">
+      <p>NEW LEADERBOARD ENTRY!</p>
+      <input id="chessNameInput" type="text" maxlength="12" placeholder="WINNER'S NAME" autocomplete="off" />
+      <button id="chessSubmitScoreBtn">SUBMIT</button>
+    </div>
+    <div class="leaderboard-panel">
+      <h3>FASTEST CHECKMATES</h3>
+      <div id="chessOverLeaderboard" class="leaderboard"></div>
+    </div>
     <button id="chessRestartBtn">PLAY AGAIN</button>
     <button id="chessOverMenuBtn" class="secondary">← BACK TO MENU</button>
   </div>
 
+  <script src="leaderboard.js"></script>
   <script src="chess.js"></script>
   <script src="game.js"></script>
 </body>

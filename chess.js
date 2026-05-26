@@ -14,7 +14,7 @@
   const BOARD_SIZE = 480;
   const SQUARE = BOARD_SIZE / 8;
   let canvas, ctx, boardX, boardY;
-  let board, turn, selected, legalForSelected, gameOver, lastMove;
+  let board, turn, selected, legalForSelected, gameOver, lastMove, moveCount;
   let running = false;
   let starField = [];
 
@@ -169,21 +169,52 @@
     setStatus(`${colorName} TO MOVE${check}`);
   }
 
-  function endGame(title, msg) {
+  function endGame(title, msg, winnerSide) {
     gameOver = true;
     document.getElementById('chessOverTitle').textContent = title;
     document.getElementById('chessOverMsg').textContent = msg;
     document.getElementById('chessOverScreen').classList.remove('hidden');
+    showLeaderboard(winnerSide);
+  }
+
+  function showLeaderboard(winnerSide) {
+    const promptEl = document.getElementById('chessNewHighScore');
+    const listEl = document.getElementById('chessOverLeaderboard');
+    if (!window.Leaderboard) return;
+    const eligible = winnerSide && window.Leaderboard.qualifies('chess', moveCount);
+    if (eligible) {
+      promptEl.classList.remove('hidden');
+      const input = document.getElementById('chessNameInput');
+      input.value = '';
+      input.dataset.side = winnerSide;
+      input.dataset.moves = String(moveCount);
+      setTimeout(() => input.focus(), 50);
+    } else {
+      promptEl.classList.add('hidden');
+    }
+    window.Leaderboard.render('chess', listEl);
+  }
+
+  function submitChessScore() {
+    const input = document.getElementById('chessNameInput');
+    const side = input.dataset.side;
+    const moves = parseInt(input.dataset.moves, 10);
+    if (!side || !isFinite(moves) || !window.Leaderboard) return;
+    const name = (input.value || 'AAA').trim() || 'AAA';
+    const { entry } = window.Leaderboard.submit('chess', name, moves, { side });
+    document.getElementById('chessNewHighScore').classList.add('hidden');
+    window.Leaderboard.render('chess', document.getElementById('chessOverLeaderboard'), entry);
   }
 
   function checkGameEnd() {
     const hasMoves = anyLegalMoves(board, turn);
     if (!hasMoves) {
       if (inCheck(board, turn)) {
+        const winnerSide = turn === 'w' ? 'b' : 'w';
         const winner = turn === 'w' ? 'Black' : 'White';
-        endGame('CHECKMATE', `${winner} wins!`);
+        endGame('CHECKMATE', `${winner} wins in ${moveCount} moves!`, winnerSide);
       } else {
-        endGame('STALEMATE', 'Draw — no legal moves.');
+        endGame('STALEMATE', 'Draw — no legal moves.', null);
       }
     }
   }
@@ -203,6 +234,7 @@
       if (match) {
         board = applyMove(board, selected.r, selected.c, r, c);
         lastMove = { from: { r: selected.r, c: selected.c }, to: { r, c } };
+        moveCount++;
         selected = null;
         legalForSelected = [];
         turn = turn === 'w' ? 'b' : 'w';
@@ -365,6 +397,17 @@
     legalForSelected = [];
     lastMove = null;
     gameOver = false;
+    moveCount = 0;
+    const newHs = document.getElementById('chessNewHighScore');
+    if (newHs) newHs.classList.add('hidden');
+    const submitBtn = document.getElementById('chessSubmitScoreBtn');
+    if (submitBtn && !submitBtn.dataset.wired) {
+      submitBtn.dataset.wired = '1';
+      submitBtn.onclick = submitChessScore;
+      document.getElementById('chessNameInput').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); submitChessScore(); }
+      });
+    }
     if (starField.length === 0) initStarField();
     canvas.removeEventListener('click', onClick);
     canvas.addEventListener('click', onClick);
