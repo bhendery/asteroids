@@ -124,9 +124,10 @@ function spawnAsteroid(size = 'large', atX, atY) {
 
 function aimAtPlayer() {
   const difficultyFactor = Math.min(1 + gameTime / 180, 2.2);
-  const spawnRate = 140 + 160 / difficultyFactor;
+  let spawnRate = 140 + 160 / difficultyFactor;
+  if (megaship) spawnRate *= 4;
   if (gameTime > 0 && Math.random() < 1 / spawnRate) {
-    spawnAsteroid('large');
+    spawnAsteroid(megaship ? 'small' : 'large');
   }
 }
 
@@ -178,6 +179,37 @@ function spawnMegaship() {
   };
   megashipSpawned = true;
   warning = { timer: 180 };
+  // Reduce asteroid pressure so the player can focus on the megaship
+  const survivors = [];
+  for (const a of asteroids) {
+    if (a.size === 'small') {
+      survivors.push(a);
+    } else {
+      addParticles(a.x, a.y, '#c9a227', 10);
+      survivors.push(makeShrunkAsteroid(a));
+    }
+  }
+  asteroids = survivors;
+}
+
+function makeShrunkAsteroid(a) {
+  const radius = ASTEROID_RADII.small;
+  const verts = a.verts;
+  const shape = [];
+  for (let i = 0; i < verts; i++) {
+    shape.push(radius * (0.7 + Math.random() * 0.6));
+  }
+  return {
+    x: a.x, y: a.y,
+    angle: a.angle,
+    speed: a.speed,
+    size: 'small',
+    radius,
+    shape,
+    verts,
+    vx: a.vx,
+    vy: a.vy,
+  };
 }
 
 function maybeSpawnMegaship() {
