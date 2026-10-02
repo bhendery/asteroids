@@ -8,7 +8,7 @@
     p: '🛰️',
   };
   const PIECE_NAME = {
-    k: 'King', q: 'Queen', r: 'Rook', b: 'Bishop', n: 'Knight', p: 'Pawn',
+    k: 'King', q: 'Queen', r: 'Castle', b: 'Bishop', n: 'Knight', p: 'Pawn',
   };
 
   const BOARD_SIZE = 480;
