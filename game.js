@@ -601,7 +601,7 @@ function update(dt) {
     megaship.y += Math.sin(gameTime * 0.025 + megaship.sineOffset) * 0.6;
     if (gameTime - megaship.lastShot >= MEGASHIP_FIRE_INTERVAL) {
       const baseAngle = Math.atan2(player.y - megaship.y, player.x - megaship.x);
-      for (const offset of [-0.3, 0, 0.3]) {
+      for (const offset of [-0.5, -0.25, 0, 0.25, 0.5]) {
         const ang = baseAngle + offset;
         enemyBullets.push({
           x: megaship.x, y: megaship.y,
